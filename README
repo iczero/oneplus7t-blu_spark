@@ -1,6 +1,8 @@
 Linux kernel
 ============
 
+NOTE: it may be necessary to disable -Werror in drivers/staging/qcacld-3.0/Kbuild
+
 This file was moved to Documentation/admin-guide/README.rst
 
 Please notice that there are several guides for kernel developers and users.
