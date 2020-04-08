@@ -56,6 +56,7 @@ struct fastchg_device_info {
 	bool is_4085mAh_4p45_support;
 	bool is_skin_temp_high;
 	bool is_call_on;
+	bool is_battery_temp_high;
 	int mcu_reset_ahead;
 	int erase_count;
 	int addr_low;
@@ -1118,6 +1119,14 @@ void op_adapter_init(struct op_adapter_chip *chip)
 	g_adapter_chip = chip;
 }
 
+bool check_battery_temp_high() {
+	int temp = onplus_get_battery_temperature();
+	if (temp > 430) {
+		pr_info("battery temperature high: %d", temp);
+		return true;
+	} else return false;
+}
+
 #define DASH_IOC_MAGIC					0xff
 #define DASH_NOTIFY_FIRMWARE_UPDATE		_IO(DASH_IOC_MAGIC, 1)
 #define DASH_NOTIFY_FAST_PRESENT		_IOW(DASH_IOC_MAGIC, 2, int)
@@ -1214,7 +1223,8 @@ static long  dash_dev_ioctl(struct file *filp, unsigned int cmd,
 				jiffies + msecs_to_jiffies(15000));
 				di->is_skin_temp_high = check_skin_thermal_high();
 				di->is_call_on = check_call_on_status();
-				if (di->is_skin_temp_high || di->is_call_on)
+				di->is_battery_temp_high = check_battery_temp_high();
+				if (di->is_skin_temp_high || di->is_call_on || di->is_battery_temp_high)
 					dash_write(di, CURRENT_LIMIT);
 				else
 					dash_write(di, ALLOW_DATA);
