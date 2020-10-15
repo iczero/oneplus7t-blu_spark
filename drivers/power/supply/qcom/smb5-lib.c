@@ -7504,6 +7504,13 @@ static void switch_fast_chg(struct smb_charger *chg)
 		return;
 	}
 
+#ifdef CONFIG_FORCE_FAST_CHARGE
+	if (dash_charge_mode_override == FASTCHG_DASH_FORCE_DISABLE) {
+		pr_info("dash disabled in sysfs, not switching\n");
+		mutex_unlock(&chg->sw_dash_lock);
+		return;
+	}
+#endif
 	fastchg_allowed = op_get_fast_chg_allow(chg);
 	if (pre_fastchg_allowed != fastchg_allowed) {
 		pre_fastchg_allowed = fastchg_allowed;
@@ -7511,10 +7518,10 @@ static void switch_fast_chg(struct smb_charger *chg)
 	}
 	if (!fastchg_allowed) {
 		is_allowed = is_fastchg_allowed(chg);
-	if (pre_is_allowed != is_allowed) {
-		pre_is_allowed = is_allowed;
-		pr_info("is_allowed = %d\n", is_allowed);
-	}
+		if (pre_is_allowed != is_allowed) {
+			pre_is_allowed = is_allowed;
+			pr_info("is_allowed = %d\n", is_allowed);
+		}
 		if (is_allowed) {
 			set_usb_switch(chg, true);
 			op_set_fast_chg_allow(chg, true);
@@ -9252,6 +9259,18 @@ static void op_heartbeat_work(struct work_struct *work)
 	charger_present = is_usb_present(chg);
 	if (!charger_present)
 		goto out;
+
+#ifdef CONFIG_FORCE_FAST_CHARGE
+	// test disable dash
+	if (dash_charge_mode_override == FASTCHG_DASH_FORCE_DISABLE &&
+		get_prop_fast_chg_started(chg))
+	{
+		pr_info("disable dash by sysfs\n");
+		set_usb_switch(chg, false);
+		op_set_fast_chg_allow(chg, false);
+	}
+#endif
+
 	/* charger present */
 	power_supply_changed(chg->batt_psy);
 	chg->dash_on = get_prop_fast_chg_started(chg);

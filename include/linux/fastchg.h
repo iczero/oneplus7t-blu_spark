@@ -19,4 +19,10 @@
 
 extern int force_fast_charge;
 
+#define FASTCHG_DASH_NO_OPERATION 0
+#define FASTCHG_DASH_FORCE_CURRENT_LIMIT 1
+#define FASTCHG_DASH_FORCE_DISABLE 2
+// allow limiting current or disabling dash through sysfs
+extern int dash_charge_mode_override;
+
 #endif

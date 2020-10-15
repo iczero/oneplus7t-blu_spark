@@ -21,6 +21,13 @@
  *   1 - Force faster charge
 */
 
+/*
+ * Options for "dash_charge_mode_override":
+ * 0 - do not touch anything (default)
+ * 1 - force dash "current limit" mode if it is not already set
+ * 2 - force disable dash mode
+ */
+
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
 #include <linux/fastchg.h>
@@ -28,6 +35,7 @@
 #include <linux/module.h>
 
 int force_fast_charge = 0;
+int dash_charge_mode_override = FASTCHG_DASH_NO_OPERATION;
 
 static int __init get_fastcharge_opt(char *ffc)
 {
@@ -59,11 +67,28 @@ static ssize_t force_fast_charge_store(struct kobject *kobj, struct kobj_attribu
 	return count;
 }
 
+static ssize_t dash_override_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf) {
+	size_t count = 0;
+	count += sprintf(buf, "%d\n", dash_charge_mode_override);
+	return count;
+}
+
+static ssize_t dash_override_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count) {
+	int opt;
+	sscanf(buf, "%d ", &opt);
+	if (opt < 0 || opt > 2) opt = 0;
+	dash_charge_mode_override = opt;
+	return count;
+}
+
 static struct kobj_attribute force_fast_charge_attribute =
 __ATTR(force_fast_charge, 0664, force_fast_charge_show, force_fast_charge_store);
+static struct kobj_attribute dash_override_attribute =
+__ATTR(dash_charge_mode_override, 0664, dash_override_show, dash_override_store);
 
 static struct attribute *force_fast_charge_attrs[] = {
 &force_fast_charge_attribute.attr,
+&dash_override_attribute.attr,
 NULL,
 };
 

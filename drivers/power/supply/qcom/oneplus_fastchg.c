@@ -21,6 +21,10 @@
 #include <linux/proc_fs.h>
 #include <linux/moduleparam.h>
 
+#ifdef CONFIG_FORCE_FAST_CHARGE
+#include <linux/fastchg.h>
+#endif
+
 #define BYTE_OFFSET			2
 #define BYTES_TO_WRITE		16
 
@@ -1119,7 +1123,7 @@ void op_adapter_init(struct op_adapter_chip *chip)
 	g_adapter_chip = chip;
 }
 
-bool check_battery_temp_high() {
+bool check_battery_temp_high(void) {
 	int temp = onplus_get_battery_temperature();
 	if (temp > 430) {
 		pr_info("battery temperature high: %d", temp);
@@ -1153,8 +1157,10 @@ static long  dash_dev_ioctl(struct file *filp, unsigned int cmd,
 	int soc = 0;
 	int current_now = 0;
 	int remain_cap = 0;
+	bool do_current_limit = false;
+	int dash_operation = ALLOW_DATA;
 
-		switch (cmd) {
+	switch (cmd) {
 		case DASH_NOTIFY_FIRMWARE_UPDATE:
 			schedule_delayed_work(&di->update_firmware,
 					msecs_to_jiffies(2200));
@@ -1224,10 +1230,17 @@ static long  dash_dev_ioctl(struct file *filp, unsigned int cmd,
 				di->is_skin_temp_high = check_skin_thermal_high();
 				di->is_call_on = check_call_on_status();
 				di->is_battery_temp_high = check_battery_temp_high();
-				if (di->is_skin_temp_high || di->is_call_on || di->is_battery_temp_high)
-					dash_write(di, CURRENT_LIMIT);
-				else
-					dash_write(di, ALLOW_DATA);
+				do_current_limit = di->is_skin_temp_high || di->is_call_on || di->is_battery_temp_high;
+#ifdef CONFIG_FORCE_FAST_CHARGE
+				do_current_limit = do_current_limit || (dash_charge_mode_override == FASTCHG_DASH_FORCE_CURRENT_LIMIT);
+#endif
+				if (do_current_limit) {
+					dash_operation = CURRENT_LIMIT;
+				} else {
+					dash_operation = ALLOW_DATA;
+				}
+				pr_info("dash_write: %d\n", dash_operation);
+				dash_write(di, dash_operation);
 			}
 			break;
 		case DASH_NOTIFY_BTB_TEMP_OVER:
